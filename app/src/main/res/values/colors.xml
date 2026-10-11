@@ -1,0 +1,13 @@
+<resources>
+    <color name="primary_blue_dark">#3B5CF5</color>
+    <color name="primary_blue">#4E7CFB</color>
+    <color name="primary_blue_light">#6FA1FF</color>
+    <color name="green">#22B14C</color>
+    <color name="orange">#F7941D</color>
+    <color name="purple">#9B4DE0</color>
+    <color name="background">#F5F6FA</color>
+    <color name="card_white">#FFFFFF</color>
+    <color name="text_dark">#1E2233</color>
+    <color name="text_grey">#8A8FA3</color>
+    <color name="border_grey">#E3E6F0</color>
+</resources>

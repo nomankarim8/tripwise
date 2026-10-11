@@ -1,0 +1,8 @@
+{
+  "name": "TripWise",
+  "description": "Smart vehicle and trip cost planner for estimating fuel, toll, parking, and travel expenses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
