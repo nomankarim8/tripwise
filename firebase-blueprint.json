@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "name", "email"]
+    },
+    "trip": {
+      "title": "Planned Trip",
+      "description": "Saved trip details and cost breakdown",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "distanceKm": { "type": "number" },
+        "passengers": { "type": "integer" },
+        "vehicleType": { "type": "string" },
+        "fuelCost": { "type": "number" },
+        "tollCost": { "type": "number" },
+        "parkingCost": { "type": "number" },
+        "foodOthers": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "from", "to", "totalCost"]
+    },
+    "order": {
+      "title": "Booking Order",
+      "description": "Travel marketplace bookings and highway passes",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "date": { "type": "string" },
+        "status": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["orderId", "userId", "title", "totalAmount", "status"]
+    },
+    "emergencyContact": {
+      "title": "Emergency Contact",
+      "description": "Emergency contacts and rescue hotlines",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "phone", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile documents keyed by Auth UID"
+    },
+    "/trips/{tripId}": {
+      "schema": "trip",
+      "description": "Trip history documents scoped to user"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Marketplace orders and passes scoped to user"
+    },
+    "/emergency_contacts/{contactId}": {
+      "schema": "emergencyContact",
+      "description": "Custom emergency contacts scoped to user"
+    }
+  }
+}
