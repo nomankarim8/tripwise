@@ -11,6 +11,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.tripwise.data.TripRepository
 import com.example.tripwise.ui.screens.*
 import com.example.tripwise.ui.theme.AppColors
 import com.example.tripwise.ui.theme.TripWiseTheme
@@ -18,7 +21,14 @@ import com.example.tripwise.viewmodel.Screen
 import com.example.tripwise.viewmodel.TripViewModel
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: TripViewModel by viewModels()
+    private val viewModel: TripViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TripViewModel(TripRepository(applicationContext)) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

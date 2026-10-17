@@ -1,5 +1,8 @@
 package com.example.tripwise.data
 
+import android.content.Context
+import android.util.Log
+import com.example.tripwise.R
 import com.example.tripwise.model.AppSettings
 import com.example.tripwise.model.BookingOrder
 import com.example.tripwise.model.CartItem
@@ -10,6 +13,10 @@ import com.example.tripwise.model.TripData
 import com.example.tripwise.model.TripHistoryItem
 import com.example.tripwise.model.User
 import com.example.tripwise.model.VehicleType
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +25,25 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-class TripRepository {
+class TripRepository(
+    private val firestore: FirebaseFirestore? = null,
+    private val auth: FirebaseAuth? = null
+) {
+    constructor(context: Context) : this(
+        try {
+            FirebaseFirestore.getInstance(context.applicationContext.getString(R.string.firestore_database_id))
+        } catch (e: Exception) {
+            Log.w("TripRepository", "Firestore initialization: ${e.message}")
+            null
+        },
+        try {
+            Firebase.auth
+        } catch (e: Exception) {
+            Log.w("TripRepository", "FirebaseAuth initialization: ${e.message}")
+            null
+        }
+    )
+
     // Current in-progress planned trip
     private val _currentTrip = MutableStateFlow(TripData())
     val currentTrip: StateFlow<TripData> = _currentTrip.asStateFlow()
@@ -221,6 +246,61 @@ class TripRepository {
     )
     val emergencyContacts: StateFlow<List<EmergencyContact>> = _emergencyContacts.asStateFlow()
 
+    init {
+        // Observe auth state changes to synchronize with Cloud Firestore
+        auth?.addAuthStateListener { firebaseAuth ->
+            val currentUser = firebaseAuth.currentUser
+            if (currentUser != null) {
+                _user.value = _user.value.copy(
+                    name = currentUser.displayName ?: _user.value.name,
+                    email = currentUser.email ?: _user.value.email,
+                    isLoggedIn = true
+                )
+                syncWithFirestore(currentUser.uid)
+            }
+        }
+    }
+
+    private fun syncWithFirestore(uid: String) {
+        val fs = firestore ?: return
+        try {
+            fs.collection("trips")
+                .whereEqualTo("userId", uid)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    val remoteTrips = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            val id = doc.getString("id") ?: doc.id
+                            val from = doc.getString("from") ?: ""
+                            val to = doc.getString("to") ?: ""
+                            val dist = doc.getDouble("distanceKm") ?: 0.0
+                            val pass = doc.getLong("passengers")?.toInt() ?: 1
+                            val vName = doc.getString("vehicleType") ?: "CAR"
+                            val vType = when (vName.uppercase()) {
+                                "MOTORCYCLE", "BIKE" -> VehicleType.MOTORCYCLE
+                                "CNG", "CNG_AUTO" -> VehicleType.CNG_AUTO
+                                else -> VehicleType.CAR
+                            }
+                            val fuel = doc.getDouble("fuelCost") ?: 0.0
+                            val toll = doc.getDouble("tollCost") ?: 0.0
+                            val parking = doc.getDouble("parkingCost") ?: 0.0
+                            val food = doc.getDouble("foodOthers") ?: 0.0
+                            val total = doc.getDouble("totalCost") ?: 0.0
+                            val date = doc.getString("date") ?: ""
+                            TripHistoryItem(id, from, to, dist, pass, vType, fuel, toll, parking, food, total, date)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    if (remoteTrips.isNotEmpty()) {
+                        _history.value = remoteTrips
+                    }
+                }
+        } catch (e: Exception) {
+            Log.w("TripRepository", "syncWithFirestore error: ${e.message}")
+        }
+    }
+
     // TRIP OPERATIONS (CRUD)
     fun updateTripDetails(from: String, to: String, distanceKm: Double, passengers: Int) {
         _currentTrip.value = _currentTrip.value.copy(
@@ -262,15 +342,62 @@ class TripRepository {
             date = dateFormat.format(Date())
         )
         _history.value = listOf(newItem) + _history.value
+
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            val tripDoc = mapOf(
+                "id" to newItem.id,
+                "userId" to uid,
+                "from" to newItem.from,
+                "to" to newItem.to,
+                "distanceKm" to newItem.distanceKm,
+                "passengers" to newItem.passengers,
+                "vehicleType" to newItem.vehicle.name,
+                "fuelCost" to newItem.fuelCost,
+                "tollCost" to newItem.tollCost,
+                "parkingCost" to newItem.parkingCost,
+                "foodOthers" to newItem.foodOthers,
+                "totalCost" to newItem.totalCost,
+                "date" to newItem.date
+            )
+            fs.collection("trips").document(newItem.id).set(tripDoc)
+        }
+
         return newItem
     }
 
     fun updateHistoryItem(updated: TripHistoryItem) {
         _history.value = _history.value.map { if (it.id == updated.id) updated else it }
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            val tripDoc = mapOf(
+                "id" to updated.id,
+                "userId" to uid,
+                "from" to updated.from,
+                "to" to updated.to,
+                "distanceKm" to updated.distanceKm,
+                "passengers" to updated.passengers,
+                "vehicleType" to updated.vehicle.name,
+                "fuelCost" to updated.fuelCost,
+                "tollCost" to updated.tollCost,
+                "parkingCost" to updated.parkingCost,
+                "foodOthers" to updated.foodOthers,
+                "totalCost" to updated.totalCost,
+                "date" to updated.date
+            )
+            fs.collection("trips").document(updated.id).set(tripDoc)
+        }
     }
 
     fun deleteHistoryItem(id: String) {
         _history.value = _history.value.filter { it.id != id }
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            fs.collection("trips").document(id).delete()
+        }
     }
 
     fun resetTrip() {
@@ -302,9 +429,22 @@ class TripRepository {
             phone = phone,
             bio = bio
         )
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            val userMap = mapOf(
+                "userId" to uid,
+                "name" to name,
+                "email" to email,
+                "phone" to phone,
+                "bio" to bio
+            )
+            fs.collection("users").document(uid).set(userMap)
+        }
     }
 
     fun logout() {
+        auth?.signOut()
         _user.value = _user.value.copy(isLoggedIn = false)
     }
 
@@ -369,6 +509,22 @@ class TripRepository {
         )
         _orders.value = listOf(newOrder) + _orders.value
         clearCart()
+
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            val orderDoc = mapOf(
+                "orderId" to newOrder.orderId,
+                "userId" to uid,
+                "title" to newOrder.title,
+                "totalAmount" to newOrder.totalAmount,
+                "date" to newOrder.date,
+                "status" to newOrder.status,
+                "paymentMethod" to newOrder.paymentMethod
+            )
+            fs.collection("orders").document(newOrder.orderId).set(orderDoc)
+        }
+
         return newOrder
     }
 
@@ -402,9 +558,27 @@ class TripRepository {
     fun addEmergencyContact(name: String, phone: String, role: String) {
         val newContact = EmergencyContact(UUID.randomUUID().toString(), name, phone, role)
         _emergencyContacts.value = _emergencyContacts.value + newContact
+
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            val contactDoc = mapOf(
+                "id" to newContact.id,
+                "userId" to uid,
+                "name" to newContact.name,
+                "phone" to newContact.phone,
+                "role" to newContact.role
+            )
+            fs.collection("emergency_contacts").document(newContact.id).set(contactDoc)
+        }
     }
 
     fun deleteEmergencyContact(id: String) {
         _emergencyContacts.value = _emergencyContacts.value.filter { it.id != id }
+        val uid = auth?.currentUser?.uid
+        val fs = firestore
+        if (fs != null && uid != null) {
+            fs.collection("emergency_contacts").document(id).delete()
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.example.tripwise.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -33,8 +35,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -43,11 +47,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,9 +61,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tripwise.auth.GoogleAuthHelper
 import com.example.tripwise.ui.theme.AppColors
 import com.example.tripwise.viewmodel.Screen
 import com.example.tripwise.viewmodel.TripViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -70,6 +78,10 @@ fun LoginScreen(
     var rememberMe by remember { mutableStateOf(true) }
     var showForgotDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val googleAuthHelper = remember { GoogleAuthHelper(context) }
 
     BackHandler {
         viewModel.navigateTo(Screen.Home)
@@ -129,7 +141,63 @@ fun LoginScreen(
             color = AppColors.TextGrey
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Google Sign-In Option
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    val result = googleAuthHelper.signInWithGoogle()
+                    result.onSuccess { name ->
+                        viewModel.showMessage("Signed in with Google as $name")
+                        viewModel.navigateTo(Screen.Home)
+                    }.onFailure { err ->
+                        if (err !is androidx.credentials.exceptions.GetCredentialCancellationException) {
+                            errorMessage = err.message ?: "Google sign-in failed"
+                        }
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("google_signin_button"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, AppColors.BorderGrey),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.TextDark)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = "Google",
+                tint = AppColors.PrimaryBlueDark,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Sign in with Google",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = AppColors.TextDark
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderGrey)
+            Text(
+                text = "  OR EMAIL  ",
+                fontSize = 11.sp,
+                color = AppColors.TextGrey,
+                fontWeight = FontWeight.Bold
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderGrey)
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Email Field
         OutlinedTextField(
@@ -215,7 +283,7 @@ fun LoginScreen(
             Text(text = errorMessage!!, color = Color.Red, fontSize = 12.sp)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {
@@ -268,9 +336,13 @@ fun SignupScreen(
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var agreedTerms by remember { mutableStateOf(true) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var agreedToTerms by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val googleAuthHelper = remember { GoogleAuthHelper(context) }
 
     BackHandler {
         viewModel.navigateTo(Screen.Login)
@@ -288,6 +360,23 @@ fun SignupScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(AppColors.Green.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.DirectionsCar,
+                contentDescription = "Logo",
+                tint = AppColors.Green,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = "Create Account",
             fontSize = 24.sp,
@@ -298,21 +387,82 @@ fun SignupScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Join TripWise for smart travel planning & discounts",
+            text = "Join TripWise for smart travel planning",
             fontSize = 13.sp,
             color = AppColors.TextGrey
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Google Sign-In Option
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    val result = googleAuthHelper.signInWithGoogle()
+                    result.onSuccess { googleName ->
+                        viewModel.showMessage("Signed in with Google as $googleName")
+                        viewModel.navigateTo(Screen.Home)
+                    }.onFailure { err ->
+                        if (err !is androidx.credentials.exceptions.GetCredentialCancellationException) {
+                            errorMessage = err.message ?: "Google sign-in failed"
+                        }
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("google_signup_button"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, AppColors.BorderGrey),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.TextDark)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = "Google",
+                tint = AppColors.PrimaryBlueDark,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Sign in with Google",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = AppColors.TextDark
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderGrey)
+            Text(
+                text = "  OR FILL DETAILS  ",
+                fontSize = 11.sp,
+                color = AppColors.TextGrey,
+                fontWeight = FontWeight.Bold
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderGrey)
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Name
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it; errorMessage = null },
+            onValueChange = {
+                name = it
+                errorMessage = null
+            },
             label = { Text("Full Name") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = AppColors.TextGrey) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("signup_name_input"),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("signup_name_input"),
             shape = RoundedCornerShape(12.dp)
         )
 
@@ -321,11 +471,16 @@ fun SignupScreen(
         // Email
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it; errorMessage = null },
+            onValueChange = {
+                email = it
+                errorMessage = null
+            },
             label = { Text("Email Address") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = AppColors.TextGrey) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("signup_email_input"),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("signup_email_input"),
             shape = RoundedCornerShape(12.dp)
         )
 
@@ -334,12 +489,17 @@ fun SignupScreen(
         // Phone
         OutlinedTextField(
             value = phone,
-            onValueChange = { phone = it; errorMessage = null },
+            onValueChange = {
+                phone = it
+                errorMessage = null
+            },
             label = { Text("Phone Number") },
             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = AppColors.TextGrey) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            modifier = Modifier.fillMaxWidth().testTag("signup_phone_input"),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("signup_phone_input"),
             shape = RoundedCornerShape(12.dp)
         )
 
@@ -348,38 +508,45 @@ fun SignupScreen(
         // Password
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it; errorMessage = null },
-            label = { Text("Password") },
+            onValueChange = {
+                password = it
+                errorMessage = null
+            },
+            label = { Text("Password (min 6 chars)") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = AppColors.TextGrey) },
-            visualTransformation = PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = "Toggle password",
+                        tint = AppColors.TextGrey
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("signup_password_input"),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Confirm Password
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it; errorMessage = null },
-            label = { Text("Confirm Password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = AppColors.TextGrey) },
-            visualTransformation = PasswordVisualTransformation(),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("signup_confirm_password_input"),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("signup_password_input"),
             shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Checkbox(
-                checked = agreedTerms,
-                onCheckedChange = { agreedTerms = it },
+                checked = agreedToTerms,
+                onCheckedChange = { agreedToTerms = it },
                 colors = CheckboxDefaults.colors(checkedColor = AppColors.PrimaryBlue)
             )
-            Text("I agree to TripWise Terms & Privacy Policy", fontSize = 12.sp, color = AppColors.TextDark)
+            Text(
+                text = "I agree to the Terms of Service & Privacy Policy",
+                fontSize = 12.sp,
+                color = AppColors.TextDark
+            )
         }
 
         if (errorMessage != null) {
@@ -397,10 +564,8 @@ fun SignupScreen(
                     errorMessage = "Please enter a valid email."
                 } else if (password.length < 6) {
                     errorMessage = "Password must be at least 6 characters."
-                } else if (password != confirmPassword) {
-                    errorMessage = "Passwords do not match."
-                } else if (!agreedTerms) {
-                    errorMessage = "Please accept the Terms to continue."
+                } else if (!agreedToTerms) {
+                    errorMessage = "Please accept the Terms of Service."
                 } else {
                     viewModel.signup(name, email, phone)
                 }
