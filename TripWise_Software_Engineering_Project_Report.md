@@ -905,6 +905,9 @@ Key findings from the system analysis include:
 
 TripWise is architected following the **Clean Architecture** paradigm combined with the **Model-View-ViewModel (MVVM)** design pattern recommended by the official Android Architecture Guidelines. This pattern enforces strict separation of concerns, high cohesion, low coupling, and testability.
 
+![Figure 4.1: TripWise System Architecture Diagram](report/figures/fig_architecture.png)
+*Figure 4.1: TripWise Clean System Architecture & Layered Interaction Model.*
+
 ```
 +-----------------------------------------------------------------------------------+
 |                                 PRESENTATION LAYER                                |
@@ -966,6 +969,9 @@ The architectural design emphasizes **Unidirectional Data Flow (UDF)**:
 ## 4.4 Use Case Diagram
 
 The Use Case Diagram formalizes the primary interactions between the primary actor (**Traveler / User**) and secondary actor (**Firebase / Cloud Backend**) with the TripWise system.
+
+![Figure 4.2: TripWise Formal UML Use Case Diagram](report/figures/fig_use_case.png)
+*Figure 4.2: TripWise Formal UML Use Case Diagram.*
 
 ```mermaid
 flowchart TD
@@ -1066,6 +1072,9 @@ The system's core capabilities are formalized through detailed use case specific
 
 The Activity Diagram models the dynamic operational workflow of the 4-step trip planning wizard, illustrating decision branching, validation gates, and asynchronous persistence.
 
+![Figure 4.3: TripWise 4-Step Trip Planning Activity Diagram](report/figures/fig_activity.png)
+*Figure 4.3: TripWise 4-Step Trip Planning Activity Diagram.*
+
 ```mermaid
 flowchart TD
     Start([Launch Trip Planning Wizard]) --> S1[Step 1: Enter Origin, Destination, Distance, Passengers]
@@ -1101,6 +1110,9 @@ flowchart TD
 ## 4.7 Sequence Diagram
 
 The Sequence Diagram illustrates the chronological message sequence and object collaboration across presentation, ViewModel, repository, and cloud tiers during trip calculation and storage.
+
+![Figure 4.4: TripWise End-to-End Sequence Diagram](report/figures/fig_sequence.png)
+*Figure 4.4: TripWise End-to-End Sequence Diagram.*
 
 ```mermaid
 sequenceDiagram
@@ -1325,6 +1337,9 @@ classDiagram
 ## 4.11 Entity-Relationship Diagram (ERD) & Database Schema
 
 TripWise utilizes Google Cloud Firestore, a NoSQL document-oriented database. The relational structure and document schemas are represented in the Entity-Relationship Diagram below:
+
+![Figure 4.5: TripWise NoSQL Entity-Relationship Schema](report/figures/fig_erd.png)
+*Figure 4.5: TripWise Google Cloud Firestore NoSQL Entity-Relationship Schema.*
 
 ```
 +--------------------------+             1:N             +--------------------------+
